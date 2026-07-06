@@ -64,7 +64,7 @@ export function Lanyard3D() {
       <Canvas
         key={resetKey}
         camera={{ position: [0, 0, 13], fov: 25 }}
-        dpr={[1, isMobile ? 1.5 : 2]}
+        dpr={[1, isMobile ? 4 : 2]}
         gl={{ alpha: true, antialias: true }}
         // pan-y keeps page scrolling alive on touch; taps + horizontal drags
         // reach the card
