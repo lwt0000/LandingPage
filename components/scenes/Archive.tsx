@@ -48,8 +48,14 @@ export function Archive() {
                 {pub.authors}
               </p>
               {pub.collaboration && (
-                <p className="mt-2 text-xs italic text-[var(--ink-dim)]">
-                  {pub.collaboration}
+                <p className="mt-2.5">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--accent-signal)]/45 bg-[var(--accent-signal)]/15 px-2.5 py-1 text-[0.68rem] font-semibold tracking-wide text-[#a8bdf8] shadow-[0_0_14px_-4px_var(--glow-signal)]">
+                    <span
+                      aria-hidden
+                      className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--accent-signal)]"
+                    />
+                    {pub.collaboration}
+                  </span>
                 </p>
               )}
               <div className="mt-auto pt-5">

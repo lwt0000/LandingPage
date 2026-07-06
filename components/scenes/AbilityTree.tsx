@@ -1,6 +1,12 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
+import { useRef } from "react";
+import {
+  motion,
+  useMotionValue,
+  useReducedMotion,
+  useSpring,
+} from "framer-motion";
 import { SceneShell } from "@/components/SceneShell";
 import { useInspect } from "@/components/inspect/InspectProvider";
 import { skillBranches } from "@/content/content";
@@ -60,9 +66,85 @@ for (let bi = 0; bi < skillBranches.length; bi++) {
   }
 }
 
+const clamp = (v: number, min: number, max: number) =>
+  Math.min(max, Math.max(min, v));
+
+/** Drag sensitivity (degrees per pixel) and rotation limits for the orbit. */
+const ORBIT_SENSITIVITY = 0.35;
+const ORBIT_MAX_X = 40;
+const ORBIT_MAX_Y = 55;
+const DRAG_THRESHOLD_PX = 6;
+
 export function AbilityTree() {
   const { inspect } = useInspect();
   const reducedMotion = useReducedMotion();
+
+  // Click-and-drag orbit: the whole constellation plane rotates in 3D.
+  // Raw values track the pointer; springs smooth the visible rotation.
+  const rotXRaw = useMotionValue(0);
+  const rotYRaw = useMotionValue(0);
+  const rotXSpring = useSpring(rotXRaw, { stiffness: 180, damping: 24, mass: 0.6 });
+  const rotYSpring = useSpring(rotYRaw, { stiffness: 180, damping: 24, mass: 0.6 });
+  const rotateX = reducedMotion ? rotXRaw : rotXSpring;
+  const rotateY = reducedMotion ? rotYRaw : rotYSpring;
+
+  const orbit = useRef<{
+    id: number;
+    startX: number;
+    startY: number;
+    baseX: number;
+    baseY: number;
+    moved: boolean;
+  } | null>(null);
+  const suppressClick = useRef(false);
+
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!e.isPrimary) return;
+    orbit.current = {
+      id: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      baseX: rotXRaw.get(),
+      baseY: rotYRaw.get(),
+      moved: false,
+    };
+  };
+
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const o = orbit.current;
+    if (!o || e.pointerId !== o.id) return;
+    const dx = e.clientX - o.startX;
+    const dy = e.clientY - o.startY;
+    if (!o.moved && Math.hypot(dx, dy) > DRAG_THRESHOLD_PX) {
+      o.moved = true;
+      // Capture only once it's a real drag so plain taps still click nodes.
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId);
+      } catch {
+        /* pointer already gone */
+      }
+    }
+    if (o.moved) {
+      rotYRaw.set(clamp(o.baseY + dx * ORBIT_SENSITIVITY, -ORBIT_MAX_Y, ORBIT_MAX_Y));
+      rotXRaw.set(clamp(o.baseX - dy * ORBIT_SENSITIVITY, -ORBIT_MAX_X, ORBIT_MAX_X));
+    }
+  };
+
+  const endOrbit = (e: React.PointerEvent<HTMLDivElement>) => {
+    const o = orbit.current;
+    if (!o || e.pointerId !== o.id) return;
+    if (o.moved) suppressClick.current = true;
+    orbit.current = null;
+  };
+
+  const onClickCapture = (e: React.MouseEvent<HTMLDivElement>) => {
+    // A drag just ended — swallow the click so nodes don't open.
+    if (suppressClick.current) {
+      suppressClick.current = false;
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  };
 
   const openNode = (node: { name: string; blurb: string; branchName: string }) =>
     inspect({
@@ -80,7 +162,19 @@ export function AbilityTree() {
       intro="Four branches, one build. Select a node to read its description."
       wide
     >
-      <div className="relative mx-auto hidden aspect-[7/5] w-full max-w-4xl sm:block">
+      <div
+        className="relative mx-auto hidden aspect-[7/5] w-full max-w-4xl cursor-grab touch-none select-none active:cursor-grabbing sm:block"
+        style={{ perspective: 1100 }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endOrbit}
+        onPointerCancel={endOrbit}
+        onClickCapture={onClickCapture}
+      >
+        <motion.div
+          className="absolute inset-0"
+          style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
+        >
         <svg
           aria-hidden
           className="absolute inset-0 h-full w-full"
@@ -144,6 +238,7 @@ export function AbilityTree() {
             </span>
           </motion.button>
         ))}
+        </motion.div>
       </div>
 
       {/* branch cards: legend on desktop, the full tree on mobile */}

@@ -68,25 +68,48 @@ export function QuestPath() {
                     <h3 className="scene-title mt-2 text-xl sm:text-2xl">{role.role}</h3>
                     <p className="mt-1 text-sm text-[var(--ink-dim)]">{role.org}</p>
                   </div>
-                  {role.showStudioBadge && (
-                    <span className="glass-panel flex items-center gap-2.5 rounded-xl px-3 py-2">
-                      <Image
-                        src={assets.respawnLogo}
-                        alt="Respawn Entertainment"
-                        width={80}
-                        height={17}
-                        className="logo-on-dark h-3.5 w-auto"
-                        unoptimized
-                      />
-                      <span aria-hidden className="h-4 w-px bg-white/15" />
-                      <Image
-                        src={assets.eaLogo}
-                        alt="Electronic Arts"
-                        width={18}
-                        height={18}
-                        className="h-4 w-4"
-                        unoptimized
-                      />
+                  {role.orgBadges.length > 0 && (
+                    <span className="flex flex-wrap items-center gap-2">
+                      {role.orgBadges.map((badge) =>
+                        badge === "respawn-ea" ? (
+                          <span
+                            key={badge}
+                            className="glass-panel flex items-center gap-2.5 rounded-xl px-3 py-2"
+                          >
+                            <Image
+                              src={assets.respawnLogo}
+                              alt="Respawn Entertainment"
+                              width={80}
+                              height={17}
+                              className="logo-on-dark h-3.5 w-auto"
+                              unoptimized
+                            />
+                            <span aria-hidden className="h-4 w-px bg-white/15" />
+                            <Image
+                              src={assets.eaLogo}
+                              alt="Electronic Arts"
+                              width={18}
+                              height={18}
+                              className="h-4 w-4"
+                              unoptimized
+                            />
+                          </span>
+                        ) : (
+                          <span
+                            key={badge}
+                            className="glass-panel flex items-center rounded-xl px-3 py-2"
+                          >
+                            <Image
+                              src={assets.uaLogo}
+                              alt="University of Alberta"
+                              width={80}
+                              height={22}
+                              className="logo-on-dark h-3.5 w-auto"
+                              unoptimized
+                            />
+                          </span>
+                        ),
+                      )}
                     </span>
                   )}
                 </div>

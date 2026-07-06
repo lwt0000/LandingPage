@@ -1,16 +1,18 @@
 "use client";
 
 /**
- * The signature 3D badge: a real WebGL card hanging from a physics rope.
- * Mirrors the v0 "IRL event lanyard" interaction — Rapier rigid-body rope
- * segments joined by rope/spherical joints, a MeshLine strap with repeating
- * RESPAWN ENTERTAINMENT fabric texture, drag with inertia, drop-in entrance
- * with overshoot, and tap-to-flip with UV-region link hotspots.
+ * The signature 3D badge: the documented Three.js/Rapier lanyard
+ * (BADGE_BOUNCING_ANIMATION.md). A GLB card (card + clip + clamp meshes)
+ * hangs from a rope of Rapier rigid bodies joined by rope/spherical joints;
+ * a MeshLine strap with a branded fabric texture is drawn through the body
+ * positions each frame. Drag makes the card kinematic; release hands it
+ * back to physics for the bounce. Tap flips to the QR back; the GitHub /
+ * LinkedIn chips on the front are UV-region link hotspots.
  */
 import * as THREE from "three";
-import { Suspense, use, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, extend, useFrame, useThree, type ThreeElement } from "@react-three/fiber";
-import { Environment, Lightformer } from "@react-three/drei";
+import { Environment, Lightformer, useGLTF } from "@react-three/drei";
 import {
   BallCollider,
   CuboidCollider,
@@ -22,7 +24,8 @@ import {
 } from "@react-three/rapier";
 import { MeshLineGeometry, MeshLineMaterial } from "meshline";
 import { RotateCcw } from "lucide-react";
-import { getBadgeArt, type BadgeArt } from "./badgeTextures";
+import { assets } from "@/content/content";
+import { getGlbBadgeArt, type GlbBadgeArt } from "./badgeTextures";
 
 extend({ MeshLineGeometry, MeshLineMaterial });
 
@@ -33,23 +36,38 @@ declare module "@react-three/fiber" {
   }
 }
 
-const CARD_W3 = 1.6;
-const CARD_H3 = 2.25;
+useGLTF.preload(assets.cardModel);
+
 const TAP_THRESHOLD_PX = 8;
+
+interface CardGLB {
+  nodes: {
+    card: THREE.Mesh;
+    clip: THREE.Mesh;
+    clamp: THREE.Mesh;
+  };
+  materials: {
+    base: THREE.MeshStandardMaterial;
+    metal: THREE.MeshStandardMaterial;
+  };
+}
 
 export function Lanyard3D() {
   // Remounting the Canvas restores the badge to its spawn state.
   const [resetKey, setResetKey] = useState(0);
+  const [isMobile] = useState(
+    () => typeof window !== "undefined" && window.innerWidth < 640,
+  );
 
   return (
     <div className="relative h-[500px] w-full sm:h-[600px] lg:h-[720px]">
       <Canvas
         key={resetKey}
-        camera={{ position: [0, 0, 11], fov: 25 }}
-        dpr={[1, 1.5]}
+        camera={{ position: [0, 0, 13], fov: 25 }}
+        dpr={[1, isMobile ? 1.5 : 2]}
         gl={{ alpha: true, antialias: true }}
         // pan-y keeps page scrolling alive on touch; taps + horizontal drags
-        // reach the card (mobile gets the simplified drag, per spec)
+        // reach the card
         style={{ touchAction: "pan-y", background: "transparent" }}
         aria-label="Interactive 3D badge on a lanyard — drag to swing, tap to flip"
         role="img"
@@ -57,10 +75,10 @@ export function Lanyard3D() {
         <CameraRig />
         <ambientLight intensity={Math.PI} />
         <Suspense fallback={null}>
-          <Physics gravity={[0, -40, 0]} timeStep={1 / 60}>
-            <Band />
+          <Physics gravity={[0, -40, 0]} timeStep={isMobile ? 1 / 30 : 1 / 60}>
+            <Band isMobile={isMobile} />
           </Physics>
-          <Environment>
+          <Environment blur={0.75}>
             <Lightformer intensity={2} color="white" position={[0, -1, 5]} rotation={[0, 0, Math.PI / 3]} scale={[100, 0.1, 1]} />
             <Lightformer intensity={3} color="white" position={[-1, -1, 1]} rotation={[0, 0, Math.PI / 3]} scale={[100, 0.1, 1]} />
             <Lightformer intensity={3} color="white" position={[1, 1, 1]} rotation={[0, 0, Math.PI / 3]} scale={[100, 0.1, 1]} />
@@ -89,14 +107,42 @@ function CameraRig() {
   const camera = useThree((s) => s.camera);
   const width = useThree((s) => s.size.width);
   useEffect(() => {
-    camera.position.z = width < 500 ? 14.5 : 11;
+    camera.position.z = width < 500 ? 11.5 : 8.5;
     camera.updateProjectionMatrix();
   }, [camera, width]);
   return null;
 }
 
-function Band({ maxSpeed = 50, minSpeed = 10 }) {
-  const art = use(getBadgeArt());
+function Band(props: { isMobile: boolean; maxSpeed?: number; minSpeed?: number }) {
+  const [art, setArt] = useState<GlbBadgeArt | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    void getGlbBadgeArt().then((nextArt) => {
+      if (mounted) setArt(nextArt);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  if (!art) return null;
+
+  return <BandPhysics {...props} art={art} />;
+}
+
+function BandPhysics({
+  art,
+  isMobile,
+  maxSpeed = 50,
+  minSpeed = 0,
+}: {
+  art: GlbBadgeArt;
+  isMobile: boolean;
+  maxSpeed?: number;
+  minSpeed?: number;
+}) {
+  const { nodes, materials } = useGLTF(assets.cardModel) as unknown as CardGLB;
 
   const band = useRef<THREE.Mesh<MeshLineGeometry, MeshLineMaterial>>(null);
   // null! — the joint hooks require non-nullable refs; bodies exist on mount
@@ -111,24 +157,16 @@ function Band({ maxSpeed = 50, minSpeed = 10 }) {
   const ang = useMemo(() => new THREE.Vector3(), []);
   const rot = useMemo(() => new THREE.Vector3(), []);
   const dir = useMemo(() => new THREE.Vector3(), []);
-  const lerped = useRef<{
-    j1: THREE.Vector3 | null;
-    j2: THREE.Vector3 | null;
-    j3: THREE.Vector3 | null;
-  }>({ j1: null, j2: null, j3: null });
-  const quat = useMemo(() => new THREE.Quaternion(), []);
-  const clampPoint = useMemo(() => new THREE.Vector3(), []);
+  // Smoothed strap positions for j1/j2 (the template's `lerped` vectors)
+  const lerped = useRef<{ j1: THREE.Vector3 | null; j2: THREE.Vector3 | null }>({
+    j1: null,
+    j2: null,
+  });
 
   const [curve] = useState(
     () =>
       new THREE.CatmullRomCurve3(
-        [
-          new THREE.Vector3(),
-          new THREE.Vector3(),
-          new THREE.Vector3(),
-          new THREE.Vector3(),
-          new THREE.Vector3(),
-        ],
+        [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()],
         false,
         "chordal",
       ),
@@ -137,57 +175,39 @@ function Band({ maxSpeed = 50, minSpeed = 10 }) {
   const [hovered, setHovered] = useState(false);
   const [flipped, setFlipped] = useState(false);
   const downPos = useRef<{ x: number; y: number } | null>(null);
-  const { size } = useThree();
 
-  const { frontMats, bandTex } = useMemo(() => {
-    const mk = (canvas: HTMLCanvasElement) => {
-      const t = new THREE.CanvasTexture(canvas);
-      t.colorSpace = THREE.SRGBColorSpace;
-      t.anisotropy = 16;
-      return t;
-    };
-    const frontTex = mk(art.front);
-    const backTex = mk(art.back);
-    const bandT = mk(art.band);
+  const { cardTex, bandTex } = useMemo(() => {
+    const cardT = new THREE.CanvasTexture(art.atlas);
+    cardT.flipY = false; // atlas is painted in glTF UV space (v origin at top)
+    cardT.colorSpace = THREE.SRGBColorSpace;
+    cardT.anisotropy = 16;
+    const bandT = new THREE.CanvasTexture(art.band);
+    bandT.colorSpace = THREE.SRGBColorSpace;
+    bandT.anisotropy = 16;
     bandT.wrapS = bandT.wrapT = THREE.RepeatWrapping;
-
-    const face = (map: THREE.Texture) =>
-      new THREE.MeshPhysicalMaterial({
-        map,
-        clearcoat: 1,
-        clearcoatRoughness: 0.15,
-        roughness: 0.35,
-        metalness: 0.15,
-      });
-    const edge = new THREE.MeshStandardMaterial({
-      color: "#181b22",
-      roughness: 0.5,
-      metalness: 0.6,
-    });
-    // box faces: +x, -x, +y, -y, +z (front), -z (back)
-    const mats = [edge, edge, edge, edge, face(frontTex), face(backTex)];
-    return { frontMats: mats, bandTex: bandT };
+    return { cardTex: cardT, bandTex: bandT };
   }, [art]);
 
+  // Imperative — MeshLineMaterial's constructor typing demands a resolution,
+  // which doesn't fit the declarative args/props split.
   const bandMaterial = useMemo(() => {
     const m = new MeshLineMaterial({
       color: new THREE.Color("white"),
-      resolution: new THREE.Vector2(size.width, size.height),
+      resolution: new THREE.Vector2(1000, isMobile ? 2000 : 1000),
       useMap: 1,
       map: bandTex,
       repeat: new THREE.Vector2(-4, 1),
       lineWidth: 1,
     });
     m.depthTest = false;
-    m.transparent = true;
     return m;
-  }, [bandTex, size.width, size.height]);
+  }, [bandTex, isMobile]);
 
   useRopeJoint(fixed, j1, [[0, 0, 0], [0, 0, 0], 1]);
   useRopeJoint(j1, j2, [[0, 0, 0], [0, 0, 0], 1]);
   useRopeJoint(j2, j3, [[0, 0, 0], [0, 0, 0], 1]);
-  // card anchor sits just above the card's top edge (at the clamp)
-  useSphericalJoint(j3, card, [[0, 0, 0], [0, CARD_H3 / 2 + 0.12, 0]]);
+  // the badge hangs from a point above its center — this offset drives the swing
+  useSphericalJoint(j3, card, [[0, 0, 0], [0, 1.45, 0]]);
 
   useEffect(() => {
     if (hovered) {
@@ -198,9 +218,10 @@ function Band({ maxSpeed = 50, minSpeed = 10 }) {
     }
   }, [hovered, dragged]);
 
-  const openIfLinkRegion = (uv: THREE.Vector2 | undefined, materialIndex: number) => {
-    // Front face only, and only while the front is showing
-    if (uv && materialIndex === 4 && !flipped) {
+  const openIfLinkRegion = (uv: THREE.Vector2 | undefined) => {
+    // Hotspots live on the front face only (left half of the atlas), so a
+    // flipped card — whose raycast hits the back face (u > 0.5) — never matches.
+    if (uv && !flipped) {
       for (const r of art.frontRegions) {
         if (uv.x >= r.u0 && uv.x <= r.u1 && uv.y >= r.v0 && uv.y <= r.v1) {
           window.open(r.href, "_blank", "noopener,noreferrer");
@@ -224,40 +245,25 @@ function Band({ maxSpeed = 50, minSpeed = 10 }) {
       });
     }
     if (fixed.current && j1.current && j2.current && j3.current && card.current && band.current) {
-      // Smooth the rope joints to avoid jitter when over-pulling
+      // Smooth j1/j2 so the visible strap lags the physics slightly, then
+      // catches up faster the further it falls behind (the template's feel).
       if (!lerped.current.j1) lerped.current.j1 = new THREE.Vector3().copy(j1.current.translation());
       if (!lerped.current.j2) lerped.current.j2 = new THREE.Vector3().copy(j2.current.translation());
-      if (!lerped.current.j3) lerped.current.j3 = new THREE.Vector3().copy(j3.current.translation());
       for (const [ref, l] of [
         [j1, lerped.current.j1],
         [j2, lerped.current.j2],
-        [j3, lerped.current.j3],
       ] as const) {
-        const t = ref.current!.translation();
-        const clamped = Math.max(0.1, Math.min(1, l.distanceTo(t)));
+        const t = ref.current.translation();
+        const clampedDistance = Math.max(0.1, Math.min(1, l.distanceTo(t)));
         // cap the factor at 1 — a slow frame (large delta) must never extrapolate
-        l.lerp(t, Math.min(1, delta * (minSpeed + clamped * (maxSpeed - minSpeed))));
+        l.lerp(t, Math.min(1, delta * (minSpeed + clampedDistance * (maxSpeed - minSpeed))));
       }
-      // Pin the strap end to the clamp on the card itself so the connection
-      // never flickers — j3 alone bounces around the joint every frame.
-      const cardRot = card.current.rotation();
-      quat.set(cardRot.x, cardRot.y, cardRot.z, cardRot.w);
-      const cardPos = card.current.translation();
-      clampPoint
-        .set(0, CARD_H3 / 2 + 0.18, 0)
-        .applyQuaternion(quat)
-        .add(vec.set(cardPos.x, cardPos.y, cardPos.z));
-      curve.points[0].copy(clampPoint);
-      curve.points[1].copy(lerped.current.j3);
-      // chordal Catmull-Rom NaNs on coincident points — keep p1 off p0
-      if (curve.points[1].distanceTo(curve.points[0]) < 0.05) {
-        curve.points[1].y = curve.points[0].y + 0.05;
-      }
-      curve.points[2].copy(lerped.current.j2);
-      curve.points[3].copy(lerped.current.j1);
-      curve.points[4].copy(fixed.current.translation());
-      band.current.geometry.setPoints(curve.getPoints(32));
-      // Ease the card back to face the camera
+      curve.points[0].copy(j3.current.translation());
+      curve.points[1].copy(lerped.current.j2);
+      curve.points[2].copy(lerped.current.j1);
+      curve.points[3].copy(fixed.current.translation());
+      band.current.geometry.setPoints(curve.getPoints(isMobile ? 16 : 32));
+      // Weak restoring force around Y so the card faces the camera again
       ang.copy(card.current.angvel());
       rot.copy(card.current.rotation());
       card.current.setAngvel({ x: ang.x, y: ang.y - rot.y * 0.25, z: ang.z }, false);
@@ -274,25 +280,26 @@ function Band({ maxSpeed = 50, minSpeed = 10 }) {
   });
 
   const segmentProps = {
+    type: "dynamic" as const,
     canSleep: true,
     colliders: false as const,
-    angularDamping: 2,
-    linearDamping: 2,
+    angularDamping: 4,
+    linearDamping: 4,
   };
 
   return (
     <>
-      {/* Anchor sits top-center; the card spawns level with it so gravity
-          produces the drop → overshoot → swing → settle entrance. */}
-      <group position={[0, 3.6, 0]}>
-        <RigidBody ref={fixed} type="fixed" {...segmentProps} />
-        <RigidBody position={[0.5, 0, 0]} ref={j1} {...segmentProps} type="dynamic">
+      {/* The bodies start as a horizontal chain; gravity + the joints produce
+          the drop → overshoot → swing → settle entrance. */}
+      <group position={[0, 4, 0]}>
+        <RigidBody ref={fixed} {...segmentProps} type="fixed" />
+        <RigidBody position={[0.5, 0, 0]} ref={j1} {...segmentProps}>
           <BallCollider args={[0.1]} />
         </RigidBody>
-        <RigidBody position={[1, 0, 0]} ref={j2} {...segmentProps} type="dynamic">
+        <RigidBody position={[1, 0, 0]} ref={j2} {...segmentProps}>
           <BallCollider args={[0.1]} />
         </RigidBody>
-        <RigidBody position={[1.5, 0, 0]} ref={j3} {...segmentProps} type="dynamic">
+        <RigidBody position={[1.5, 0, 0]} ref={j3} {...segmentProps}>
           <BallCollider args={[0.1]} />
         </RigidBody>
         <RigidBody
@@ -301,8 +308,10 @@ function Band({ maxSpeed = 50, minSpeed = 10 }) {
           {...segmentProps}
           type={dragged ? "kinematicPosition" : "dynamic"}
         >
-          <CuboidCollider args={[CARD_W3 / 2, CARD_H3 / 2, 0.02]} />
+          <CuboidCollider args={[0.8, 1.125, 0.01]} />
           <group
+            scale={2.25}
+            position={[0, -1.2, -0.05]}
             onPointerOver={() => setHovered(true)}
             onPointerOut={() => setHovered(false)}
             onPointerDown={(e) => {
@@ -322,32 +331,28 @@ function Band({ maxSpeed = 50, minSpeed = 10 }) {
                 const dx = e.clientX - downPos.current.x;
                 const dy = e.clientY - downPos.current.y;
                 if (Math.hypot(dx, dy) < TAP_THRESHOLD_PX) {
-                  const consumed = openIfLinkRegion(e.uv, e.face?.materialIndex ?? 4);
+                  const consumed = openIfLinkRegion(e.uv);
                   if (!consumed) setFlipped((f) => !f);
                 }
                 downPos.current = null;
               }
             }}
           >
+            {/* the card slab flips; the clip/clamp stay put on the strap */}
             <group ref={flipGroup}>
-              {/* the card slab */}
-              <mesh material={frontMats}>
-                <boxGeometry args={[CARD_W3, CARD_H3, 0.04]} />
+              <mesh geometry={nodes.card.geometry}>
+                <meshPhysicalMaterial
+                  map={cardTex}
+                  map-anisotropy={16}
+                  clearcoat={isMobile ? 0 : 0.6}
+                  clearcoatRoughness={0.2}
+                  roughness={0.45}
+                  metalness={0.2}
+                />
               </mesh>
             </group>
-            {/* metal clamp — outside the flip group (the strap side doesn't
-                spin), pieces overlap into each other so no faces are ever
-                coplanar (coplanar contact z-fights and flickers) */}
-            <group>
-              <mesh position={[0, CARD_H3 / 2 + 0.06, 0]}>
-                <boxGeometry args={[0.46, 0.2, 0.09]} />
-                <meshStandardMaterial color="#b9bec9" metalness={0.65} roughness={0.35} />
-              </mesh>
-              <mesh position={[0, CARD_H3 / 2 + 0.19, 0]}>
-                <cylinderGeometry args={[0.045, 0.045, 0.18, 16]} />
-                <meshStandardMaterial color="#b9bec9" metalness={0.65} roughness={0.35} />
-              </mesh>
-            </group>
+            <mesh geometry={nodes.clip.geometry} material={materials.metal} material-roughness={0.3} />
+            <mesh geometry={nodes.clamp.geometry} material={materials.metal} />
           </group>
         </RigidBody>
       </group>
@@ -360,9 +365,9 @@ function Band({ maxSpeed = 50, minSpeed = 10 }) {
           // distinct seed points — identical points make the chordal curve NaN
           if (m)
             m.geometry.setPoints([
-              new THREE.Vector3(0, 3.6, 0),
-              new THREE.Vector3(0, 2.4, 0),
-              new THREE.Vector3(0, 1.2, 0),
+              new THREE.Vector3(0, 4, 0),
+              new THREE.Vector3(0, 2.7, 0),
+              new THREE.Vector3(0, 1.4, 0),
               new THREE.Vector3(0, 0, 0),
             ]);
         }}

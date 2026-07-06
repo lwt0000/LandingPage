@@ -1,18 +1,35 @@
 /**
  * Runtime generation of the badge artwork: front face, back face (QR), and
  * the lanyard band texture. Everything is drawn onto canvases from local
- * assets + data — no external art. Used by both the 3D badge (as WebGL
- * textures) and available to the 2.5D fallback.
+ * assets + data — no external art.
+ *
+ * The 3D badge uses a GLB card model (v0-card.glb) whose single `base`
+ * texture is a square atlas: the card FRONT maps to the left half and the
+ * card BACK to the right half (top ~75% of each). We repaint that atlas
+ * with the personalized design so the GLB renders our badge.
  */
 import QRCode from "qrcode";
 import { assets, links, profile, qrTarget } from "@/content/content";
 
 export const CARD_W = 1024;
-export const CARD_H = 1440; // matches 3D card aspect (1.6 : 2.25)
+export const CARD_H = 1440; // per-face art resolution (card aspect ≈ 0.716)
 export const BAND_W = 1024;
 export const BAND_H = 128;
 
-/** UV-space rects (origin bottom-left, like three.js UVs) for clickable regions on the front. */
+/** Supersampling for the face art: coordinates stay in CARD_W×CARD_H space,
+ *  pixels render at 2× so text on the card stays crisp up close. */
+const TEX_SCALE = 4;
+
+/** Combined GLB atlas size and UV rects measured from v0-card.glb. */
+const ATLAS = 8192;
+// glTF UV convention: v grows downward from the texture top.
+const FRONT_RECT = { u0: 0.00085, v0: 0.00425, u1: 0.4989, v1: 0.75483 };
+const BACK_RECT = { u0: 0.50145, v0: 0.00229, u1: 0.99993, v1: 0.75718 };
+
+/**
+ * Clickable regions on the card front, in glTF UV space of the atlas
+ * (v origin at texture TOP — matches `e.uv` reported for the GLB mesh).
+ */
 export interface UvRegion {
   name: "github" | "linkedin";
   href: string;
@@ -22,9 +39,19 @@ export interface UvRegion {
   v1: number;
 }
 
-export interface BadgeArt {
-  front: HTMLCanvasElement;
-  back: HTMLCanvasElement;
+/** Pixel-space rect on the per-face art canvas, before atlas mapping. */
+interface PixelRegion {
+  name: "github" | "linkedin";
+  href: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+export interface GlbBadgeArt {
+  /** Square atlas canvas for the GLB card's base material map. */
+  atlas: HTMLCanvasElement;
   band: HTMLCanvasElement;
   frontRegions: UvRegion[];
 }
@@ -95,16 +122,7 @@ function drawCardBase(ctx: CanvasRenderingContext2D) {
   ctx.strokeStyle = "rgba(255,255,255,0.05)";
   ctx.lineWidth = 2;
   ctx.stroke();
-
-  // Lanyard slot near top
-  const slotW = 220;
-  const slotH = 34;
-  roundedRectPath(ctx, (w - slotW) / 2, 54, slotW, slotH, 17);
-  ctx.fillStyle = "#04050a";
-  ctx.fill();
-  ctx.strokeStyle = "rgba(255,255,255,0.18)";
-  ctx.lineWidth = 3;
-  ctx.stroke();
+  // No drawn lanyard slot — the GLB model has a physical clip and clamp.
 }
 
 const DISPLAY = "'Space Grotesk', 'Segoe UI', system-ui, sans-serif";
@@ -128,7 +146,7 @@ function drawFront(
   ctx: CanvasRenderingContext2D,
   respawn: HTMLImageElement | null,
   ea: HTMLImageElement | null,
-): UvRegion[] {
+): PixelRegion[] {
   const w = CARD_W;
   const h = CARD_H;
   drawCardBase(ctx);
@@ -183,12 +201,12 @@ function drawFront(
   ctx.fillStyle = "#9db4f5";
   ctx.font = `600 34px ${DISPLAY}`;
   ctx.letterSpacing = "14px";
-  ctx.fillText("ALL-AREA ACCESS · GAME AI · QA", w / 2 + 7, 955);
+  ctx.fillText("ALL-AREA ACCESS", w / 2 + 7, 955);
   ctx.letterSpacing = "0px";
   ctx.restore();
 
-  // ---- Link chips (GitHub / LinkedIn) — clickable UV regions ----
-  const regions: UvRegion[] = [];
+  // ---- Link chips (GitHub / LinkedIn) — clickable regions ----
+  const regions: PixelRegion[] = [];
   const chipY = 1070;
   const chipH = 96;
   const chipW = 350;
@@ -223,15 +241,7 @@ function drawFront(
     ctx.fillText(chip.label, x + chipH + 4, chipY + chipH / 2 + 14);
     ctx.textAlign = "center";
 
-    regions.push({
-      name: chip.name,
-      href: chip.href,
-      u0: x / w,
-      u1: (x + chipW) / w,
-      // canvas y grows downward; UV v grows upward
-      v0: 1 - (chipY + chipH) / h,
-      v1: 1 - chipY / h,
-    });
+    regions.push({ name: chip.name, href: chip.href, x, y: chipY, w: chipW, h: chipH });
   });
 
   // Hint
@@ -281,7 +291,7 @@ async function drawBack(
 
   const qrCanvas = document.createElement("canvas");
   await QRCode.toCanvas(qrCanvas, qrTarget, {
-    width: qrSize,
+    width: qrSize * TEX_SCALE, // rendered at supersampled resolution, drawn at logical size
     margin: 0,
     color: { dark: "#0b0c10", light: "#f2f3f6" },
     errorCorrectionLevel: "M",
@@ -364,10 +374,10 @@ function drawBand(ctx: CanvasRenderingContext2D) {
   }
 }
 
-let cached: Promise<BadgeArt> | null = null;
+let cached: Promise<GlbBadgeArt> | null = null;
 
 /** Generate (once) all badge art. Safe to call from any client component. */
-export function getBadgeArt(): Promise<BadgeArt> {
+export function getGlbBadgeArt(): Promise<GlbBadgeArt> {
   if (!cached) {
     cached = (async () => {
       const [respawn, ea] = await Promise.all([
@@ -376,21 +386,53 @@ export function getBadgeArt(): Promise<BadgeArt> {
       ]);
 
       const front = document.createElement("canvas");
-      front.width = CARD_W;
-      front.height = CARD_H;
-      const frontRegions = drawFront(front.getContext("2d")!, respawn, ea);
+      front.width = CARD_W * TEX_SCALE;
+      front.height = CARD_H * TEX_SCALE;
+      const fctx = front.getContext("2d")!;
+      fctx.scale(TEX_SCALE, TEX_SCALE);
+      const pixelRegions = drawFront(fctx, respawn, ea);
 
       const back = document.createElement("canvas");
-      back.width = CARD_W;
-      back.height = CARD_H;
-      await drawBack(back.getContext("2d")!, respawn, ea);
+      back.width = CARD_W * TEX_SCALE;
+      back.height = CARD_H * TEX_SCALE;
+      const bctx = back.getContext("2d")!;
+      bctx.scale(TEX_SCALE, TEX_SCALE);
+      await drawBack(bctx, respawn, ea);
+
+      // Assemble the GLB atlas: front art → left UV rect, back art → right.
+      const atlas = document.createElement("canvas");
+      atlas.width = ATLAS;
+      atlas.height = ATLAS;
+      const actx = atlas.getContext("2d")!;
+      actx.fillStyle = "#0c0e13"; // card rim/edges sample just outside the rects
+      actx.fillRect(0, 0, ATLAS, ATLAS);
+      const px = (r: typeof FRONT_RECT) => ({
+        x: r.u0 * ATLAS,
+        y: r.v0 * ATLAS,
+        w: (r.u1 - r.u0) * ATLAS,
+        h: (r.v1 - r.v0) * ATLAS,
+      });
+      const f = px(FRONT_RECT);
+      const b = px(BACK_RECT);
+      actx.drawImage(front, f.x, f.y, f.w, f.h);
+      actx.drawImage(back, b.x, b.y, b.w, b.h);
+
+      // Map chip rects from face-art pixels into atlas UV space (v top-down).
+      const frontRegions: UvRegion[] = pixelRegions.map((r) => ({
+        name: r.name,
+        href: r.href,
+        u0: FRONT_RECT.u0 + (r.x / CARD_W) * (FRONT_RECT.u1 - FRONT_RECT.u0),
+        u1: FRONT_RECT.u0 + ((r.x + r.w) / CARD_W) * (FRONT_RECT.u1 - FRONT_RECT.u0),
+        v0: FRONT_RECT.v0 + (r.y / CARD_H) * (FRONT_RECT.v1 - FRONT_RECT.v0),
+        v1: FRONT_RECT.v0 + ((r.y + r.h) / CARD_H) * (FRONT_RECT.v1 - FRONT_RECT.v0),
+      }));
 
       const band = document.createElement("canvas");
       band.width = BAND_W;
       band.height = BAND_H;
       drawBand(band.getContext("2d")!);
 
-      return { front, back, band, frontRegions };
+      return { atlas, band, frontRegions };
     })();
   }
   return cached;

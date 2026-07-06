@@ -29,13 +29,16 @@ export interface Profile {
   aboutHighlights: string[];
 }
 
+/** Small organization logo cards shown on a quest checkpoint. */
+export type OrgBadge = "respawn-ea" | "ua";
+
 export interface ExperienceRole {
   id: string;
   role: string;
   org: string;
   period: string;
   current: boolean;
-  showStudioBadge: boolean;
+  orgBadges: OrgBadge[];
   summary: string;
   details: string[];
   tags: string[];
@@ -145,7 +148,7 @@ export const experience: ExperienceRole[] = [
     org: "Respawn Studios / Electronic Arts",
     period: "Apr 2026 – Present",
     current: true,
-    showStudioBadge: true,
+    orgBadges: ["respawn-ea"],
     summary: "QA and AI research at Respawn — game-related AI workflows and QA innovation.",
     details: [
       "Drives AI research for game QA: gameplay analysis, bug detection, and intelligent QA tooling.",
@@ -159,7 +162,7 @@ export const experience: ExperienceRole[] = [
     org: "Electronic Arts",
     period: "Oct 2024 – Oct 2025",
     current: false,
-    showStudioBadge: false,
+    orgBadges: ["respawn-ea", "ua"],
     summary: "Applied AI/ML to large-scale game testing.",
     details: [
       "Built automated bug detection & retrieval from gameplay footage using vision-language models.",
@@ -173,7 +176,7 @@ export const experience: ExperienceRole[] = [
     org: "University of Alberta",
     period: "Sept 2023 – Jan 2026",
     current: false,
-    showStudioBadge: false,
+    orgBadges: ["ua"],
     summary: "ASGAARD Lab — Machine Learning System Engineering & Analytics.",
     details: [
       "Research in intelligent systems and AI/ML testing.",
@@ -187,7 +190,7 @@ export const experience: ExperienceRole[] = [
     org: "University of Alberta",
     period: "Sept 2022 – Dec 2025",
     current: false,
-    showStudioBadge: false,
+    orgBadges: ["ua"],
     summary: "Labs for CMPUT 291 & ECE 325.",
     details: [
       "Taught labs covering SQL, Python, MongoDB, Java, database systems, and programming concepts.",
@@ -404,6 +407,9 @@ export const scenes: SceneNav[] = [
 export const assets = {
   respawnLogo: "/assets/respawn-logo.webp",
   eaLogo: "/assets/ea-logo.svg",
+  uaLogo: "/assets/ua-logo.png",
+  /** 3D badge model (card + clip + clamp meshes, base/metal materials). */
+  cardModel: "/assets/v0-card.glb",
   heroVideo: "/assets/hero-bg.mp4" as string | null,
   qrImage: null as string | null, // none in assets → generated at runtime → LinkedIn
 } as const;
