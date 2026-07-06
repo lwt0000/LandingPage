@@ -99,7 +99,7 @@ export interface SceneNav {
 export const profile: Profile = {
   name: "Wentao Lu",
   title: "Software Development Engineer",
-  taglineRole: "AI & QA Researcher",
+  taglineRole: "AI QA Researcher",
   studio: "Respawn Studios @ Electronic Arts",
   location: "Edmonton, AB, Canada",
   heroSubtitle:
@@ -113,8 +113,8 @@ export const profile: Profile = {
     "ASGAARD Lab",
     "ML System Engineering & Analytics",
     "AI-assisted QA",
-    "gameplay video analysis",
-    "visual bug detection",
+    "Gameplay Video nalysis",
+    "Visual Bug Detection",
     "Respawn Studios @ EA",
   ],
 };

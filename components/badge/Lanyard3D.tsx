@@ -344,10 +344,17 @@ function BandPhysics({
                 <meshPhysicalMaterial
                   map={cardTex}
                   map-anisotropy={16}
-                  clearcoat={isMobile ? 0 : 0.6}
-                  clearcoatRoughness={0.2}
-                  roughness={0.45}
-                  metalness={0.2}
+                  transparent
+                  opacity={1.8}
+                  depthWrite={false}
+                  clearcoat={1}
+                  clearcoatRoughness={0.05}
+                  roughness={0.08}
+                  metalness={0}
+                  transmission={isMobile ? 0.18 : 0.38}
+                  thickness={0.35}
+                  ior={1.45}
+                  reflectivity={0.85}
                 />
               </mesh>
             </group>

@@ -77,32 +77,33 @@ function roundedRectPath(
   ctx.roundRect(x, y, w, h, r);
 }
 
-/** Base card: near-black glossy slab with edge light and subtle texture. */
+/** Base card: transparent smoked glass with edge light and subtle texture. */
 function drawCardBase(ctx: CanvasRenderingContext2D) {
   const w = CARD_W;
   const h = CARD_H;
 
-  // Deep base
+  ctx.clearRect(0, 0, w, h);
+
   const base = ctx.createLinearGradient(0, 0, w, h);
-  base.addColorStop(0, "#14161d");
-  base.addColorStop(0.5, "#0c0e13");
-  base.addColorStop(1, "#101319");
+  base.addColorStop(0, "rgba(20,22,29,0.25)");
+  base.addColorStop(0.5, "rgba(8,10,15,0.17)");
+  base.addColorStop(1, "rgba(16,19,25,0.23)");
   ctx.fillStyle = base;
   ctx.fillRect(0, 0, w, h);
 
-  // Diagonal gloss sheen
+  // Diagonal gloss sheen.
   const sheen = ctx.createLinearGradient(0, 0, w * 1.2, h * 0.9);
-  sheen.addColorStop(0, "rgba(255,255,255,0.10)");
-  sheen.addColorStop(0.25, "rgba(255,255,255,0.02)");
+  sheen.addColorStop(0, "rgba(255,255,255,0.18)");
+  sheen.addColorStop(0.25, "rgba(255,255,255,0.04)");
   sheen.addColorStop(0.5, "rgba(255,255,255,0)");
-  sheen.addColorStop(0.75, "rgba(255,255,255,0.03)");
+  sheen.addColorStop(0.75, "rgba(255,255,255,0.06)");
   sheen.addColorStop(1, "rgba(255,255,255,0)");
   ctx.fillStyle = sheen;
   ctx.fillRect(0, 0, w, h);
 
-  // Fine diagonal micro-lines (carbon feel, very subtle)
+  // Fine diagonal micro-lines, like light catching smoked glass.
   ctx.save();
-  ctx.globalAlpha = 0.05;
+  ctx.globalAlpha = 0.06;
   ctx.strokeStyle = "#ffffff";
   ctx.lineWidth = 1;
   for (let i = -h; i < w; i += 14) {
@@ -115,11 +116,11 @@ function drawCardBase(ctx: CanvasRenderingContext2D) {
 
   // Edge light
   roundedRectPath(ctx, 6, 6, w - 12, h - 12, 46);
-  ctx.strokeStyle = "rgba(255,255,255,0.16)";
+  ctx.strokeStyle = "rgba(255,255,255,0.32)";
   ctx.lineWidth = 3;
   ctx.stroke();
   roundedRectPath(ctx, 14, 14, w - 28, h - 28, 40);
-  ctx.strokeStyle = "rgba(255,255,255,0.05)";
+  ctx.strokeStyle = "rgba(255,255,255,0.10)";
   ctx.lineWidth = 2;
   ctx.stroke();
   // No drawn lanyard slot — the GLB model has a physical clip and clamp.
@@ -127,7 +128,7 @@ function drawCardBase(ctx: CanvasRenderingContext2D) {
 
 const DISPLAY = "'Space Grotesk', 'Segoe UI', system-ui, sans-serif";
 
-/** Draw an image inverted-with-hue-preserved so dark logos read on the dark card. */
+/** Draw an image inverted-with-hue-preserved so dark logos read on smoked glass. */
 function drawLogoOnDark(
   ctx: CanvasRenderingContext2D,
   img: HTMLImageElement,
@@ -138,6 +139,7 @@ function drawLogoOnDark(
 ) {
   ctx.save();
   ctx.filter = "invert(1) hue-rotate(180deg)";
+  ctx.globalAlpha = 0.95;
   ctx.drawImage(img, x, y, w, h);
   ctx.restore();
 }
@@ -221,9 +223,9 @@ function drawFront(
   chips.forEach((chip, i) => {
     const x = startX + i * (chipW + gap);
     roundedRectPath(ctx, x, chipY, chipW, chipH, 26);
-    ctx.fillStyle = "rgba(255,255,255,0.06)";
+    ctx.fillStyle = "rgba(255,255,255,0.08)";
     ctx.fill();
-    ctx.strokeStyle = "rgba(255,255,255,0.22)";
+    ctx.strokeStyle = "rgba(255,255,255,0.26)";
     ctx.lineWidth = 2.5;
     ctx.stroke();
 
@@ -245,7 +247,7 @@ function drawFront(
   });
 
   // Hint
-  ctx.fillStyle = "rgba(255,255,255,0.34)";
+  ctx.fillStyle = "rgba(255,255,255,0.38)";
   ctx.font = `500 30px ${DISPLAY}`;
   ctx.fillText("TAP CARD TO FLIP", w / 2, 1250);
 
@@ -257,16 +259,6 @@ function drawFront(
     ctx.font = `700 64px ${DISPLAY}`;
     ctx.fillText("EA", w - 150, h - 120);
   }
-
-  // Holo dot bottom-left
-  const holo = ctx.createRadialGradient(150, h - 150, 4, 150, h - 150, 46);
-  holo.addColorStop(0, "rgba(242,103,34,0.85)");
-  holo.addColorStop(0.6, "rgba(37,90,246,0.4)");
-  holo.addColorStop(1, "rgba(255,255,255,0)");
-  ctx.fillStyle = holo;
-  ctx.beginPath();
-  ctx.arc(150, h - 150, 46, 0, Math.PI * 2);
-  ctx.fill();
 
   return regions;
 }
@@ -404,7 +396,7 @@ export function getGlbBadgeArt(): Promise<GlbBadgeArt> {
       atlas.width = ATLAS;
       atlas.height = ATLAS;
       const actx = atlas.getContext("2d")!;
-      actx.fillStyle = "#0c0e13"; // card rim/edges sample just outside the rects
+      actx.fillStyle = "rgba(8,10,15,0.20)"; // card rim/edges sample just outside the rects
       actx.fillRect(0, 0, ATLAS, ATLAS);
       const px = (r: typeof FRONT_RECT) => ({
         x: r.u0 * ATLAS,
