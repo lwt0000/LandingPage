@@ -13,6 +13,28 @@ npm run build  # production build
 npm start      # serve production build
 ```
 
+## Docker
+
+Build and run with Docker Compose:
+
+```bash
+docker compose up --build
+```
+
+The app is served at <http://localhost:3000>.
+
+Run detached:
+
+```bash
+docker compose up --build -d
+```
+
+Stop the container:
+
+```bash
+docker compose down
+```
+
 ## Stack
 
 - Next.js (App Router) + TypeScript + Tailwind CSS 4

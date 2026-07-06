@@ -1,0 +1,14 @@
+.git
+.idea
+.agents
+.claude
+.next
+node_modules
+npm-debug.log*
+Dockerfile
+docker-compose*.yml
+.env*
+!.env.example
+*.tsbuildinfo
+README.md
+BADGE_BOUNCING_ANIMATION.md
