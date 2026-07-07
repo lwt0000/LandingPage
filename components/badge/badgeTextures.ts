@@ -16,12 +16,29 @@ export const CARD_H = 1440; // per-face art resolution (card aspect ≈ 0.716)
 export const BAND_W = 1024;
 export const BAND_H = 128;
 
-/** Supersampling for the face art: coordinates stay in CARD_W×CARD_H space,
- *  pixels render at 2× so text on the card stays crisp up close. */
-const TEX_SCALE = 4;
+/** Combined GLB atlas: drawn at 8192 where the GPU allows it, clamped to
+ *  the device's MAX_TEXTURE_SIZE (and to 4096 on phones, where 8192 wastes
+ *  ~270MB of GPU memory). Exceeding the GPU limit makes three.js silently
+ *  downscale the canvas with low-quality resampling — the badge went blurry
+ *  on mobile GPUs that cap textures at 4096. */
+const ATLAS_MAX = 8192;
+const ATLAS_MAX_MOBILE = 4096;
 
-/** Combined GLB atlas size and UV rects measured from v0-card.glb. */
-const ATLAS = 8192;
+function resolveAtlasSize(): number {
+  let maxTex = 4096;
+  try {
+    const probe = document.createElement("canvas");
+    const gl = probe.getContext("webgl2") ?? probe.getContext("webgl");
+    if (gl) {
+      maxTex = gl.getParameter(gl.MAX_TEXTURE_SIZE) as number;
+      gl.getExtension("WEBGL_lose_context")?.loseContext();
+    }
+  } catch {
+    /* keep the conservative default */
+  }
+  const cap = window.innerWidth < 640 ? ATLAS_MAX_MOBILE : ATLAS_MAX;
+  return Math.min(cap, maxTex);
+}
 // glTF UV convention: v grows downward from the texture top.
 const FRONT_RECT = { u0: 0.00085, v0: 0.00425, u1: 0.4989, v1: 0.75483 };
 const BACK_RECT = { u0: 0.50145, v0: 0.00229, u1: 0.99993, v1: 0.75718 };
@@ -267,6 +284,7 @@ async function drawBack(
   ctx: CanvasRenderingContext2D,
   respawn: HTMLImageElement | null,
   ea: HTMLImageElement | null,
+  texScale: number,
 ) {
   const w = CARD_W;
   const h = CARD_H;
@@ -283,7 +301,7 @@ async function drawBack(
 
   const qrCanvas = document.createElement("canvas");
   await QRCode.toCanvas(qrCanvas, qrTarget, {
-    width: qrSize * TEX_SCALE, // rendered at supersampled resolution, drawn at logical size
+    width: Math.round(qrSize * texScale), // rendered at texture resolution, drawn at logical size
     margin: 0,
     color: { dark: "#0b0c10", light: "#f2f3f6" },
     errorCorrectionLevel: "M",
@@ -377,32 +395,38 @@ export function getGlbBadgeArt(): Promise<GlbBadgeArt> {
         loadImage(assets.eaLogo),
       ]);
 
+      const atlasSize = resolveAtlasSize();
+      // Face art renders at the texel density its atlas rect will sample
+      // (rect width ≈ atlasSize/2), so text stays crisp with no resampling.
+      const texScale = atlasSize / 2048;
+
       const front = document.createElement("canvas");
-      front.width = CARD_W * TEX_SCALE;
-      front.height = CARD_H * TEX_SCALE;
+      front.width = Math.round(CARD_W * texScale);
+      front.height = Math.round(CARD_H * texScale);
       const fctx = front.getContext("2d")!;
-      fctx.scale(TEX_SCALE, TEX_SCALE);
+      fctx.scale(texScale, texScale);
       const pixelRegions = drawFront(fctx, respawn, ea);
 
       const back = document.createElement("canvas");
-      back.width = CARD_W * TEX_SCALE;
-      back.height = CARD_H * TEX_SCALE;
+      back.width = Math.round(CARD_W * texScale);
+      back.height = Math.round(CARD_H * texScale);
       const bctx = back.getContext("2d")!;
-      bctx.scale(TEX_SCALE, TEX_SCALE);
-      await drawBack(bctx, respawn, ea);
+      bctx.scale(texScale, texScale);
+      await drawBack(bctx, respawn, ea, texScale);
 
       // Assemble the GLB atlas: front art → left UV rect, back art → right.
       const atlas = document.createElement("canvas");
-      atlas.width = ATLAS;
-      atlas.height = ATLAS;
+      atlas.width = atlasSize;
+      atlas.height = atlasSize;
       const actx = atlas.getContext("2d")!;
+      actx.imageSmoothingQuality = "high";
       actx.fillStyle = "rgba(8,10,15,0.20)"; // card rim/edges sample just outside the rects
-      actx.fillRect(0, 0, ATLAS, ATLAS);
+      actx.fillRect(0, 0, atlasSize, atlasSize);
       const px = (r: typeof FRONT_RECT) => ({
-        x: r.u0 * ATLAS,
-        y: r.v0 * ATLAS,
-        w: (r.u1 - r.u0) * ATLAS,
-        h: (r.v1 - r.v0) * ATLAS,
+        x: r.u0 * atlasSize,
+        y: r.v0 * atlasSize,
+        w: (r.u1 - r.u0) * atlasSize,
+        h: (r.v1 - r.v0) * atlasSize,
       });
       const f = px(FRONT_RECT);
       const b = px(BACK_RECT);

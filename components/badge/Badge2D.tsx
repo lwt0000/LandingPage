@@ -108,7 +108,8 @@ export function Badge2D() {
           dragElastic={0.32}
           dragTransition={{ bounceStiffness: 240, bounceDamping: 11 }}
           whileDrag={{ scale: 1.04, boxShadow: "0 40px 80px -20px rgba(0,0,0,0.9)" }}
-          style={{ x, y, rotate: reducedMotion ? 0 : cardTilt, marginTop: -6 }}
+          // touchAction none: card drags must never turn into page scrolls
+          style={{ x, y, rotate: reducedMotion ? 0 : cardTilt, marginTop: -6, touchAction: "none" }}
           className="relative z-10 cursor-grab active:cursor-grabbing"
           onTap={() => setFlipped((f) => !f)}
         >

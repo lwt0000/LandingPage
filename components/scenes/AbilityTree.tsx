@@ -12,8 +12,9 @@ import { skillBranches } from "@/content/content";
  * real DOM buttons projected to screen space every frame, with SVG lines
  * drawn through the same projection, so the chips keep their glass styling
  * and accessibility. Drag (mouse or touch) spins the sphere with inertia;
- * it also idles in a slow rotation. On small screens the sphere hides and
- * the branch cards below carry the same nodes as tappable chips.
+ * it also idles in a slow rotation. On small screens the chips shrink and
+ * touch-action stays pan-y (horizontal drags spin, vertical swipes scroll);
+ * the branch cards below repeat the nodes as easier tap targets.
  */
 
 interface SphereNode {
@@ -302,7 +303,7 @@ export function AbilityTree() {
       wide
     >
       <div
-        className="relative mx-auto hidden aspect-[7/5] w-full max-w-4xl cursor-grab touch-none select-none active:cursor-grabbing sm:block"
+        className="relative mx-auto aspect-[7/5] w-full max-w-4xl cursor-grab touch-pan-y select-none active:cursor-grabbing sm:touch-none"
         aria-label="3D skill sphere — drag to rotate"
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
@@ -340,7 +341,7 @@ export function AbilityTree() {
 
         {/* core — the sphere's center, so it never moves under rotation */}
         <span
-          className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full border border-[var(--accent-ember)]/40 bg-[var(--bg-elevated)] px-3 py-1 font-[family-name:var(--font-display)] text-[0.6rem] uppercase tracking-[0.3em] text-[var(--accent-ember)] shadow-[0_0_24px_var(--glow-ember)]"
+          className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full border border-[var(--accent-ember)]/40 bg-[var(--bg-elevated)] px-2 py-0.5 font-[family-name:var(--font-display)] text-[0.5rem] uppercase tracking-[0.3em] text-[var(--accent-ember)] shadow-[0_0_24px_var(--glow-ember)] sm:px-3 sm:py-1 sm:text-[0.6rem]"
           style={{ left: "50%", top: "50%", zIndex: 100 }}
           aria-hidden
         >
@@ -358,10 +359,10 @@ export function AbilityTree() {
             className="group absolute rounded-full"
             style={nodeDepthStyle(initialProj[i])}
           >
-            <span className="flex items-center gap-1.5 whitespace-nowrap rounded-full border border-white/15 bg-[var(--bg-elevated)]/90 px-2.5 py-1 text-[0.7rem] text-[var(--ink)] backdrop-blur transition-[transform,box-shadow,border-color] duration-300 group-hover:scale-110 group-hover:border-white/40 group-hover:shadow-[0_0_18px_-2px_var(--glow-signal)]">
+            <span className="flex items-center gap-1 whitespace-nowrap rounded-full border border-white/15 bg-[var(--bg-elevated)]/90 px-2 py-0.5 text-[0.55rem] text-[var(--ink)] backdrop-blur transition-[transform,box-shadow,border-color] duration-300 group-hover:scale-110 group-hover:border-white/40 group-hover:shadow-[0_0_18px_-2px_var(--glow-signal)] sm:gap-1.5 sm:px-2.5 sm:py-1 sm:text-[0.7rem]">
               <span
                 aria-hidden
-                className="h-1.5 w-1.5 shrink-0 rounded-full bg-white/50 transition-colors group-hover:bg-[var(--accent-signal)]"
+                className="h-1 w-1 shrink-0 rounded-full bg-white/50 transition-colors group-hover:bg-[var(--accent-signal)] sm:h-1.5 sm:w-1.5"
               />
               {node.name}
             </span>

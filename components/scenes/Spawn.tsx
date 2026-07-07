@@ -49,8 +49,11 @@ export function Spawn() {
       className="relative flex min-h-svh scroll-mt-16 flex-col justify-center overflow-hidden px-4 pt-10 sm:px-8"
     >
       <div className="mx-auto grid w-full max-w-7xl items-center gap-4 lg:grid-cols-[1.05fr_0.95fr]">
-        {/* Badge first in DOM on mobile so the signature moment leads */}
-        <div className="order-1 lg:order-2">
+        {/* Badge first in DOM on mobile so the signature moment leads.
+            Negative right margins bleed the canvas toward the viewport edge
+            so a dragged/swinging card isn't clipped at the container; the
+            section's overflow-hidden crops whatever passes the viewport. */}
+        <div className="order-1 -mr-4 sm:-mr-8 lg:order-2 lg:-mr-24">
           <BadgeRig />
         </div>
 

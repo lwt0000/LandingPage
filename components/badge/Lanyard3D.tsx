@@ -143,6 +143,7 @@ function BandPhysics({
   minSpeed?: number;
 }) {
   const { nodes, materials } = useGLTF(assets.cardModel) as unknown as CardGLB;
+  const gl = useThree((s) => s.gl);
 
   const band = useRef<THREE.Mesh<MeshLineGeometry, MeshLineMaterial>>(null);
   // null! — the joint hooks require non-nullable refs; bodies exist on mount
@@ -175,18 +176,40 @@ function BandPhysics({
   const [hovered, setHovered] = useState(false);
   const [flipped, setFlipped] = useState(false);
   const downPos = useRef<{ x: number; y: number } | null>(null);
+  const touchOnCard = useRef(false);
+
+  // touch-action: pan-y on the canvas keeps the page scrollable, but it also
+  // let vertical card drags turn into page scrolls. Block native scrolling
+  // only for touches that begin on the card: pointerdown (which raycasts the
+  // card and sets the flag) fires before the compatibility touchstart event.
+  useEffect(() => {
+    const el = gl.domElement;
+    const block = (e: TouchEvent) => {
+      if (touchOnCard.current && e.cancelable) e.preventDefault();
+    };
+    el.addEventListener("touchstart", block, { passive: false });
+    el.addEventListener("touchmove", block, { passive: false });
+    return () => {
+      el.removeEventListener("touchstart", block);
+      el.removeEventListener("touchmove", block);
+    };
+  }, [gl]);
 
   const { cardTex, bandTex } = useMemo(() => {
+    // Requesting more anisotropy than the GPU supports is an invalid-value
+    // error that leaves the texture with none at all — mobile GPUs often cap
+    // at 8 or don't support it, which is part of the mobile blurriness.
+    const aniso = Math.min(16, gl.capabilities.getMaxAnisotropy());
     const cardT = new THREE.CanvasTexture(art.atlas);
     cardT.flipY = false; // atlas is painted in glTF UV space (v origin at top)
     cardT.colorSpace = THREE.SRGBColorSpace;
-    cardT.anisotropy = 16;
+    cardT.anisotropy = aniso;
     const bandT = new THREE.CanvasTexture(art.band);
     bandT.colorSpace = THREE.SRGBColorSpace;
-    bandT.anisotropy = 16;
+    bandT.anisotropy = aniso;
     bandT.wrapS = bandT.wrapT = THREE.RepeatWrapping;
     return { cardTex: cardT, bandTex: bandT };
-  }, [art]);
+  }, [art, gl]);
 
   // Imperative — MeshLineMaterial's constructor typing demands a resolution,
   // which doesn't fit the declarative args/props split.
@@ -316,6 +339,7 @@ function BandPhysics({
             onPointerOut={() => setHovered(false)}
             onPointerDown={(e) => {
               (e.target as Element).setPointerCapture(e.pointerId);
+              touchOnCard.current = true;
               downPos.current = { x: e.clientX, y: e.clientY };
               if (card.current) {
                 setDragged(
@@ -325,6 +349,7 @@ function BandPhysics({
             }}
             onPointerUp={(e) => {
               (e.target as Element).releasePointerCapture(e.pointerId);
+              touchOnCard.current = false;
               setDragged(false);
               // Tap (below drag threshold) → link hotspot or flip
               if (downPos.current) {
@@ -337,13 +362,17 @@ function BandPhysics({
                 downPos.current = null;
               }
             }}
+            onPointerCancel={() => {
+              touchOnCard.current = false;
+              downPos.current = null;
+              setDragged(false);
+            }}
           >
             {/* the card slab flips; the clip/clamp stay put on the strap */}
             <group ref={flipGroup}>
               <mesh geometry={nodes.card.geometry}>
                 <meshPhysicalMaterial
                   map={cardTex}
-                  map-anisotropy={16}
                   transparent
                   opacity={1.8}
                   depthWrite={false}
