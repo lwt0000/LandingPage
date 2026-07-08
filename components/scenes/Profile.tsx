@@ -30,7 +30,7 @@ export function Profile() {
               {profile.aboutHighlights.map((h) => (
                 <li
                   key={h}
-                  className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-[var(--ink)] transition-colors hover:border-white/25"
+                  className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-[var(--ink)] transition-all duration-300 hover:scale-[1.06] hover:border-white/30 hover:bg-white/[0.09] hover:shadow-[0_0_18px_-6px_var(--glow-signal)]"
                 >
                   {h}
                 </li>

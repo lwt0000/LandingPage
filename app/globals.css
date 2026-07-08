@@ -13,7 +13,7 @@
   --edge: rgba(255, 255, 255, 0.1);
   --edge-strong: rgba(255, 255, 255, 0.22);
   --ink: #e8eaf0;
-  --ink-dim: #9aa1b0;
+  --ink-dim: #a6adbd;
   --accent-signal: #255af6; /* derived from EA logo */
   --accent-ember: #f26722; /* derived from Respawn logo */
   --glow-signal: rgba(37, 90, 246, 0.35);
@@ -62,19 +62,71 @@ body {
   color: #0a0a0a;
 }
 
-/* Glossy panel: the base surface treatment used across scenes */
+/*
+ * Liquid glass panel: the base surface treatment used across scenes.
+ * A darker tinted base (not pure white-on-transparent) keeps text readable
+ * while the hero video plays behind it; heavy blur + saturation makes the
+ * video read as refracted color instead of competing detail.
+ */
+/* Positioning context for the specular/ripple layers. Panels that are
+   themselves positioned with fixed/absolute/sticky utilities keep those —
+   this unlayered rule would otherwise beat Tailwind's layered utilities. */
+.glass-panel:not(.fixed, .absolute, .sticky) {
+  position: relative;
+}
+
 .glass-panel {
-  background: linear-gradient(
-    160deg,
-    rgba(255, 255, 255, 0.07) 0%,
-    rgba(255, 255, 255, 0.03) 45%,
-    rgba(255, 255, 255, 0.015) 100%
-  );
+  background:
+    radial-gradient(
+      120% 90% at 50% 0%,
+      rgba(255, 255, 255, 0.09) 0%,
+      rgba(255, 255, 255, 0.02) 55%,
+      rgba(255, 255, 255, 0) 100%
+    ),
+    linear-gradient(160deg, rgba(17, 20, 29, 0.78) 0%, rgba(10, 12, 18, 0.6) 100%);
   border: 1px solid var(--edge);
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(22px) saturate(1.6);
+  -webkit-backdrop-filter: blur(22px) saturate(1.6);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.04),
     0 20px 50px -20px rgba(0, 0, 0, 0.7);
+}
+
+/* Fully opaque fallback keeps contrast when backdrop-filter isn't available */
+@supports not (backdrop-filter: blur(1px)) {
+  .glass-panel {
+    background: linear-gradient(160deg, rgba(17, 20, 29, 0.96), rgba(10, 12, 18, 0.94));
+  }
+}
+
+/* Pointer-tracked specular highlight — the "liquid" light that follows the
+   cursor across a panel. --mx/--my are set by LiquidGlass via delegation. */
+.glass-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  background: radial-gradient(
+    260px circle at var(--mx, 50%) var(--my, 30%),
+    rgba(255, 255, 255, 0.12) 0%,
+    rgba(130, 160, 255, 0.05) 40%,
+    transparent 70%
+  );
+}
+
+.glass-panel:hover::before,
+.glass-panel:focus-within::before {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glass-panel::before {
+    display: none;
+  }
 }
 
 .glass-panel-hover {
@@ -88,7 +140,7 @@ body {
   border-color: var(--edge-strong);
   transform: translateY(-4px);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
     0 30px 60px -20px rgba(0, 0, 0, 0.8),
     0 0 40px -10px var(--glow-signal);
 }
@@ -99,6 +151,48 @@ body {
     transition: none;
     transform: none;
   }
+}
+
+/* Click/tap ripple — a light wave spreading through the glass. The host is
+   injected by LiquidGlass so ripples clip to the panel's rounded corners. */
+.ripple-host {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.liquid-ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.22) 0%,
+    rgba(160, 185, 255, 0.08) 40%,
+    transparent 70%
+  );
+  transform: scale(0);
+  opacity: 1;
+  animation: liquid-ripple 0.75s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  pointer-events: none;
+}
+
+@keyframes liquid-ripple {
+  to {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+/* Magnetic elements drift a few px toward the cursor (set by LiquidGlass) */
+[data-magnetic] {
+  transition:
+    transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.35s ease,
+    box-shadow 0.35s ease,
+    color 0.35s ease;
+  will-change: transform;
 }
 
 /* Sheen sweep across glossy cards on hover */
@@ -114,7 +208,7 @@ body {
   background: linear-gradient(
     105deg,
     transparent 40%,
-    rgba(255, 255, 255, 0.06) 50%,
+    rgba(255, 255, 255, 0.09) 50%,
     transparent 60%
   );
   transform: translateX(-110%);
@@ -139,12 +233,17 @@ body {
   letter-spacing: 0.42em;
   text-transform: uppercase;
   color: var(--ink-dim);
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.6);
 }
 
 .scene-title {
   font-family: var(--font-display);
   font-weight: 700;
   letter-spacing: -0.02em;
+  /* keeps large type legible when a bright video frame passes behind it */
+  text-shadow:
+    0 2px 30px rgba(0, 0, 0, 0.6),
+    0 1px 4px rgba(0, 0, 0, 0.45);
 }
 
 /* Visible focus for keyboard users — never removed, only styled */

@@ -101,13 +101,14 @@ export function Spawn() {
               <a
                 key={label}
                 href={href}
+                data-magnetic
                 {...(href.endsWith(".pdf")
                   ? { target: "_blank", rel: "noreferrer" }
                   : {})}
                 className={
                   primary
-                    ? "sheen inline-flex items-center gap-2 rounded-xl bg-[var(--ink)] px-5 py-3 font-[family-name:var(--font-display)] text-sm font-semibold uppercase tracking-[0.14em] text-[#0b0c10] transition-transform hover:scale-[1.03]"
-                    : "sheen glass-panel inline-flex items-center gap-2 rounded-xl px-5 py-3 font-[family-name:var(--font-display)] text-sm uppercase tracking-[0.14em] text-[var(--ink)] transition-colors hover:border-white/30"
+                    ? "sheen inline-flex items-center gap-2 rounded-xl bg-[var(--ink)] px-5 py-3 font-[family-name:var(--font-display)] text-sm font-semibold uppercase tracking-[0.14em] text-[#0b0c10]"
+                    : "sheen glass-panel inline-flex items-center gap-2 rounded-xl px-5 py-3 font-[family-name:var(--font-display)] text-sm uppercase tracking-[0.14em] text-[var(--ink)] hover:border-white/30"
                 }
               >
                 <Icon size={15} aria-hidden />

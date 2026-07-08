@@ -90,6 +90,7 @@ export function Inventory() {
       </AnimatePresence>
       <button
         onClick={() => setOpen((v) => !v)}
+        data-magnetic
         aria-expanded={open}
         aria-label={open ? "Close inventory" : "Open inventory — resume and links"}
         className="glass-panel flex h-11 items-center gap-2 rounded-full px-4 font-[family-name:var(--font-display)] text-[0.7rem] uppercase tracking-[0.22em] text-[var(--ink)] transition-all hover:border-white/30 hover:shadow-[0_0_24px_-4px_var(--glow-ember)]"

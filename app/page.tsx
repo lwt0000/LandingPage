@@ -1,4 +1,5 @@
 import { CinematicBackground } from "@/components/background/CinematicBackground";
+import { LiquidGlass } from "@/components/fx/LiquidGlass";
 import { InspectProvider } from "@/components/inspect/InspectProvider";
 import { FallbackNav, QuestMap } from "@/components/nav/QuestMap";
 import { Inventory } from "@/components/nav/Inventory";
@@ -23,6 +24,7 @@ export default function Home() {
         Skip to content
       </a>
       <CinematicBackground />
+      <LiquidGlass />
       <FallbackNav />
       <QuestMap />
       <Inventory />

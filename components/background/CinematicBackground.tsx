@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Volume2, VolumeX } from "lucide-react";
 import { assets } from "@/content/content";
 
 /**
@@ -13,11 +14,24 @@ import { assets } from "@/content/content";
  */
 export function CinematicBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   // Resolved by the asset-discovery protocol: no hero video exists today, so
   // this is null and the animated canvas renders. If a video path is set in
   // content.ts, it plays — and a load error still drops back to the canvas.
   const [videoSrc, setVideoSrc] = useState<string | null>(assets.heroVideo);
+  const [muted, setMuted] = useState(true);
   const videoOk = videoSrc !== null;
+
+  const toggleSound = () => {
+    const v = videoRef.current;
+    if (!v) return;
+    const nextMuted = !muted;
+    v.muted = nextMuted;
+    setMuted(nextMuted);
+    // Unmuting counts as a user gesture, so playback with audio is allowed —
+    // but nudge play() in case the browser paused the video earlier.
+    if (!nextMuted) v.play().catch(() => {});
+  };
 
   // Animated canvas fallback
   useEffect(() => {
@@ -149,24 +163,51 @@ export function CinematicBackground() {
   }, [videoOk]);
 
   return (
-    <div aria-hidden className="pointer-events-none fixed inset-0 z-0">
+    <>
+      <div aria-hidden className="pointer-events-none fixed inset-0 z-0">
+        {videoOk && (
+          <video
+            ref={videoRef}
+            muted={muted}
+            loop
+            playsInline
+            autoPlay
+            preload="metadata"
+            src={videoSrc}
+            className="h-full w-full object-cover opacity-60"
+            onError={() => setVideoSrc(null)}
+          />
+        )}
+        {!videoOk && (
+          <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
+        )}
+        {/* Readability scrims over whichever layer renders: a vertical
+            gradient tames bright frames behind text, and a radial vignette
+            darkens the edges so foreground glass keeps its contrast. */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/20 to-[var(--bg)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(120%_90%_at_50%_15%,transparent_40%,rgba(5,6,9,0.6)_100%)]" />
+      </div>
+
       {videoOk && (
-        <video
-          muted
-          loop
-          playsInline
-          autoPlay
-          preload="metadata"
-          src={videoSrc}
-          className="h-full w-full object-cover opacity-60"
-          onError={() => setVideoSrc(null)}
-        />
+        <button
+          onClick={toggleSound}
+          data-magnetic
+          aria-label={muted ? "Unmute background video" : "Mute background video"}
+          aria-pressed={!muted}
+          title={muted ? "Unmute background video" : "Mute background video"}
+          className="glass-panel fixed bottom-4 right-4 z-[70] flex h-11 items-center gap-2 rounded-full px-4 font-[family-name:var(--font-display)] text-[0.7rem] uppercase tracking-[0.22em] text-[var(--ink)] hover:border-white/30 hover:shadow-[0_0_24px_-4px_var(--glow-signal)] sm:bottom-6 sm:right-6"
+          style={{ background: "var(--bg-elevated)" }}
+        >
+          {muted ? <VolumeX size={16} aria-hidden /> : <Volume2 size={16} aria-hidden />}
+          <span className="hidden sm:inline">{muted ? "Sound" : "Mute"}</span>
+          {muted && (
+            <span aria-hidden className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5">
+              <span className="absolute inset-0 rounded-full bg-[var(--accent-ember)] opacity-75 motion-safe:animate-ping" />
+              <span className="absolute inset-0 rounded-full bg-[var(--accent-ember)]" />
+            </span>
+          )}
+        </button>
       )}
-      {!videoOk && (
-        <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
-      )}
-      {/* Readability scrim over whichever layer renders */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-[var(--bg)]" />
-    </div>
+    </>
   );
 }
