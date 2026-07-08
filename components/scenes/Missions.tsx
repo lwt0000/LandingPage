@@ -1,6 +1,5 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
 import { Crosshair } from "lucide-react";
 import { SceneShell } from "@/components/SceneShell";
 import { Reveal } from "@/components/fx/Reveal";
@@ -10,7 +9,6 @@ import { projects } from "@/content/content";
 /** Scene 5 — Missions: project cards in a mission-select gallery. */
 export function Missions() {
   const { inspect } = useInspect();
-  const reducedMotion = useReducedMotion();
 
   return (
     <SceneShell
@@ -23,7 +21,7 @@ export function Missions() {
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {projects.map((p, i) => (
           <Reveal key={p.id} variant="rise" delay={(i % 3) * 0.1}>
-            <motion.button
+            <button
               onClick={() =>
                 inspect({
                   title: p.title,
@@ -34,15 +32,8 @@ export function Missions() {
                 })
               }
               aria-haspopup="dialog"
-              className="glass-panel sheen group flex h-full w-full flex-col rounded-2xl p-6 text-left"
-              {...(reducedMotion
-                ? {}
-                : {
-                    whileHover: { y: -6, rotateX: 2, rotateY: -2, scale: 1.015 },
-                    whileTap: { scale: 0.985 },
-                    transition: { type: "spring", stiffness: 300, damping: 22 },
-                  })}
-              style={{ transformPerspective: 800 }}
+              data-tilt
+              className="glass-panel glass-panel-hover sheen group flex h-full w-full flex-col rounded-2xl p-6 text-left"
             >
               <div className="mb-4 flex items-center justify-between">
                 <Crosshair
@@ -78,7 +69,7 @@ export function Missions() {
                   </span>
                 )}
               </div>
-            </motion.button>
+            </button>
           </Reveal>
         ))}
       </div>

@@ -16,12 +16,14 @@ export const CARD_H = 1440; // per-face art resolution (card aspect ≈ 0.716)
 export const BAND_W = 1024;
 export const BAND_H = 128;
 
-/** Combined GLB atlas: drawn at 8192 where the GPU allows it, clamped to
- *  the device's MAX_TEXTURE_SIZE (and to 4096 on phones, where 8192 wastes
- *  ~270MB of GPU memory). Exceeding the GPU limit makes three.js silently
- *  downscale the canvas with low-quality resampling — the badge went blurry
- *  on mobile GPUs that cap textures at 4096. */
-const ATLAS_MAX = 8192;
+/** Combined GLB atlas, clamped to the device's MAX_TEXTURE_SIZE. Capped at
+ *  4096 everywhere: an 8192² RGBA canvas is a ~270MB single-call texImage2D
+ *  upload that froze the page for a beat when the badge first appeared, and
+ *  at badge screen size 4096 (≈2048/face) is visually indistinguishable.
+ *  Exceeding the GPU limit makes three.js silently downscale the canvas with
+ *  low-quality resampling — the badge went blurry on mobile GPUs capped at
+ *  4096, so the MAX_TEXTURE_SIZE clamp still matters. */
+const ATLAS_MAX = 4096;
 const ATLAS_MAX_MOBILE = 4096;
 
 function resolveAtlasSize(): number {

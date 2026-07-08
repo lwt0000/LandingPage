@@ -52,6 +52,7 @@ export function QuestPath() {
                     dates: role.period,
                   })
                 }
+                data-tilt
                 className="glass-panel glass-panel-hover sheen block w-full rounded-2xl p-6 text-left sm:p-8"
                 aria-haspopup="dialog"
               >

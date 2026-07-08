@@ -31,6 +31,7 @@ export function Archive() {
                 })
               }
               aria-haspopup="dialog"
+              data-tilt
               className="glass-panel glass-panel-hover sheen group flex h-full w-full flex-col rounded-2xl p-6 text-left"
             >
               <div className="mb-5 flex items-center justify-between">

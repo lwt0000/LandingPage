@@ -36,11 +36,22 @@ export function BadgeRig() {
   const [mode, setMode] = useState<"3d" | "2d" | null>(null);
 
   useEffect(() => {
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const lowPower =
-      "deviceMemory" in navigator &&
-      (navigator as Navigator & { deviceMemory?: number }).deviceMemory! <= 2;
-    setMode(reduced || lowPower || !supportsWebGL() ? "2d" : "3d");
+    const decide = () => {
+      const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const lowPower =
+        "deviceMemory" in navigator &&
+        (navigator as Navigator & { deviceMemory?: number }).deviceMemory! <= 2;
+      setMode(reduced || lowPower || !supportsWebGL() ? "2d" : "3d");
+    };
+    // Defer the heavy 3D init (Rapier WASM, shader compile, atlas texture
+    // upload) into idle time so it can't hitch the hero text entrance that
+    // plays during the first second.
+    if (typeof window.requestIdleCallback === "function") {
+      const id = window.requestIdleCallback(decide, { timeout: 800 });
+      return () => window.cancelIdleCallback(id);
+    }
+    const id = window.setTimeout(decide, 300);
+    return () => window.clearTimeout(id);
   }, []);
 
   if (mode === null) {

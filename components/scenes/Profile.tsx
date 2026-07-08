@@ -24,7 +24,7 @@ export function Profile() {
           </p>
         </Reveal>
         <Reveal variant="right" delay={0.25}>
-          <div className="glass-panel rounded-2xl p-6">
+          <div data-tilt className="glass-panel rounded-2xl p-6">
             <p className="scene-eyebrow mb-4 !text-[0.62rem]">Loadout</p>
             <ul className="flex flex-wrap gap-2" aria-label="Profile highlights">
               {profile.aboutHighlights.map((h) => (

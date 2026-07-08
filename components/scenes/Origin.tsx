@@ -15,7 +15,10 @@ export function Origin() {
       <div className="grid gap-6 md:grid-cols-2">
         {education.map((edu, i) => (
           <Reveal key={edu.id} variant={i === 0 ? "left" : "right"} delay={i * 0.15}>
-            <article className="glass-panel glass-panel-hover sheen relative h-full overflow-hidden rounded-2xl p-7 sm:p-9">
+            <article
+              data-tilt
+              className="glass-panel glass-panel-hover sheen relative h-full overflow-hidden rounded-2xl p-7 sm:p-9"
+            >
               <span
                 aria-hidden
                 className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-[var(--accent-signal)]/10 blur-2xl"

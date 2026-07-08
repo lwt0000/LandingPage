@@ -1,5 +1,8 @@
 import { CinematicBackground } from "@/components/background/CinematicBackground";
 import { LiquidGlass } from "@/components/fx/LiquidGlass";
+import { LiquidCursor } from "@/components/fx/LiquidCursor";
+import { ScrollProgress } from "@/components/fx/ScrollProgress";
+import { BugHunt } from "@/components/game/BugHunt";
 import { InspectProvider } from "@/components/inspect/InspectProvider";
 import { FallbackNav, QuestMap } from "@/components/nav/QuestMap";
 import { Inventory } from "@/components/nav/Inventory";
@@ -25,6 +28,9 @@ export default function Home() {
       </a>
       <CinematicBackground />
       <LiquidGlass />
+      <LiquidCursor />
+      <ScrollProgress />
+      <BugHunt />
       <FallbackNav />
       <QuestMap />
       <Inventory />

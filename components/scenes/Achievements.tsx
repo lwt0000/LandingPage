@@ -29,7 +29,7 @@ export function Achievements() {
                 : { type: "spring", stiffness: 240, damping: 24, delay: i * 0.18 }
             }
           >
-            <div className="glass-panel sheen flex items-center gap-4 rounded-2xl p-5">
+            <div data-tilt className="glass-panel sheen flex items-center gap-4 rounded-2xl p-5">
               <motion.span
                 aria-hidden
                 className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-amber-300/30 bg-amber-300/10 text-amber-200"

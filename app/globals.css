@@ -129,28 +129,21 @@ body {
   }
 }
 
+/* Hover accent for interactive panels. Movement (lift/tilt/press) is spring-
+   driven by LiquidGlass via data-tilt — CSS only handles light and edges so
+   the two never fight over `transform`. */
 .glass-panel-hover {
   transition:
-    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
     border-color 0.35s ease,
     box-shadow 0.35s ease;
 }
 
 .glass-panel-hover:hover {
   border-color: var(--edge-strong);
-  transform: translateY(-4px);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.14),
     0 30px 60px -20px rgba(0, 0, 0, 0.8),
     0 0 40px -10px var(--glow-signal);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .glass-panel-hover,
-  .glass-panel-hover:hover {
-    transition: none;
-    transform: none;
-  }
 }
 
 /* Click/tap ripple — a light wave spreading through the glass. The host is
@@ -168,13 +161,13 @@ body {
   border-radius: 50%;
   background: radial-gradient(
     circle,
-    rgba(255, 255, 255, 0.22) 0%,
-    rgba(160, 185, 255, 0.08) 40%,
+    rgba(255, 255, 255, 0.2) 0%,
+    rgba(160, 185, 255, 0.07) 45%,
     transparent 70%
   );
   transform: scale(0);
   opacity: 1;
-  animation: liquid-ripple 0.75s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: liquid-ripple 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   pointer-events: none;
 }
 
@@ -185,14 +178,38 @@ body {
   }
 }
 
-/* Magnetic elements drift a few px toward the cursor (set by LiquidGlass) */
+/* Expanding ring at every pointerdown — the page itself reacts like liquid */
+.click-wave {
+  position: fixed;
+  z-index: 95;
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 0 16px -2px var(--glow-signal);
+  pointer-events: none;
+  animation: click-wave 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes click-wave {
+  to {
+    transform: scale(6);
+    opacity: 0;
+  }
+}
+
+/* Spring-animated elements: transforms are set by LiquidGlass each frame */
+[data-magnetic],
+[data-tilt] {
+  will-change: transform;
+}
+
 [data-magnetic] {
   transition:
-    transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
     border-color 0.35s ease,
     box-shadow 0.35s ease,
     color 0.35s ease;
-  will-change: transform;
 }
 
 /* Sheen sweep across glossy cards on hover */
@@ -307,4 +324,163 @@ body {
 
 .skip-link:focus {
   top: 1rem;
+}
+
+/* ---------------------------------------------------------------------------
+ * Liquid cursor — a soft ring that springs after the native cursor and
+ * swells over interactive elements. Positioned by LiquidCursor via
+ * translate3d; hidden on coarse pointers and under reduced motion.
+ * ------------------------------------------------------------------------- */
+.cursor-ring {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 99;
+  width: 36px;
+  height: 36px;
+  margin: -18px 0 0 -18px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  box-shadow:
+    0 0 18px -6px var(--glow-signal),
+    inset 0 0 12px -6px rgba(255, 255, 255, 0.25);
+  pointer-events: none;
+  mix-blend-mode: screen;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.cursor-dot {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 99;
+  width: 5px;
+  height: 5px;
+  margin: -2.5px 0 0 -2.5px;
+  border-radius: 50%;
+  background: var(--accent-ember);
+  box-shadow: 0 0 8px var(--glow-ember);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+/* ---------------------------------------------------------------------------
+ * Bug Hunt — hidden "visual bugs" (glitch artifacts) scattered across scenes.
+ * Click to capture. Styling deliberately reads as a rendering error: jittering
+ * offset RGB cells, flickering opacity.
+ * ------------------------------------------------------------------------- */
+.bug-sprite {
+  position: absolute;
+  z-index: 30;
+  width: 26px;
+  height: 26px;
+  cursor: crosshair;
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.bug-sprite::before,
+.bug-sprite::after,
+.bug-sprite > i {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+.bug-sprite::before {
+  background: rgba(242, 103, 34, 0.75);
+  animation: bug-glitch-a 1.1s steps(2, jump-none) infinite;
+}
+
+.bug-sprite::after {
+  background: rgba(37, 90, 246, 0.7);
+  animation: bug-glitch-b 0.9s steps(3, jump-none) infinite;
+}
+
+.bug-sprite > i {
+  background: rgba(120, 255, 190, 0.55);
+  animation: bug-glitch-c 1.4s steps(2, jump-none) infinite;
+}
+
+.bug-sprite:hover::before,
+.bug-sprite:hover::after,
+.bug-sprite:hover > i {
+  animation-duration: 0.35s, 0.3s, 0.4s;
+  filter: brightness(1.5);
+}
+
+@keyframes bug-glitch-a {
+  0% { transform: translate(0, 0) skewX(0deg); opacity: 0.85; }
+  25% { transform: translate(-5px, 2px) skewX(12deg); opacity: 0.4; }
+  50% { transform: translate(3px, -4px) skewX(-8deg); opacity: 0.9; }
+  75% { transform: translate(-2px, 5px) skewX(4deg); opacity: 0.3; }
+  100% { transform: translate(0, 0) skewX(0deg); opacity: 0.85; }
+}
+
+@keyframes bug-glitch-b {
+  0% { transform: translate(0, 0) scaleY(1); opacity: 0.7; }
+  30% { transform: translate(5px, -3px) scaleY(0.4); opacity: 0.35; }
+  60% { transform: translate(-4px, 3px) scaleY(1.4); opacity: 0.8; }
+  100% { transform: translate(0, 0) scaleY(1); opacity: 0.7; }
+}
+
+@keyframes bug-glitch-c {
+  0% { clip-path: inset(0 0 60% 0); transform: translate(2px, 4px); opacity: 0.6; }
+  50% { clip-path: inset(40% 0 0 0); transform: translate(-3px, -2px); opacity: 0.25; }
+  100% { clip-path: inset(0 0 60% 0); transform: translate(2px, 4px); opacity: 0.6; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bug-sprite::before,
+  .bug-sprite::after,
+  .bug-sprite > i {
+    animation: none;
+  }
+}
+
+/* Capture burst shards */
+.bug-shard {
+  position: fixed;
+  z-index: 96;
+  width: 6px;
+  height: 6px;
+  border-radius: 1px;
+  pointer-events: none;
+  animation: bug-shard 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes bug-shard {
+  to {
+    transform: translate(var(--dx), var(--dy)) rotate(280deg) scale(0.2);
+    opacity: 0;
+  }
+}
+
+/* Achievement confetti (completion overlay) */
+.confetti-piece {
+  position: absolute;
+  top: -8px;
+  width: 7px;
+  height: 11px;
+  border-radius: 1.5px;
+  pointer-events: none;
+  animation: confetti-fall var(--dur, 2.4s) ease-in var(--delay, 0s) forwards;
+  opacity: 0;
+}
+
+@keyframes confetti-fall {
+  0% { opacity: 1; transform: translate3d(0, 0, 0) rotateZ(0deg) rotateY(0deg); }
+  100% { opacity: 0.9; transform: translate3d(var(--drift, 0px), 78vh, 0) rotateZ(540deg) rotateY(720deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .confetti-piece {
+    animation: none;
+    opacity: 0;
+  }
 }
