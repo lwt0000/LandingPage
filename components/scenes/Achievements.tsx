@@ -22,7 +22,10 @@ export function Achievements() {
             key={award.id}
             initial={{ opacity: 0, x: -32, scale: 0.97 }}
             whileInView={{ opacity: 1, x: 0, scale: 1 }}
-            viewport={{ once: true, margin: "-12%" }}
+            // vertical-only margin: a percentage on all sides shrinks the
+            // trigger zone horizontally too, which left left-column items
+            // outside it on wide screens — they never animated in
+            viewport={{ once: true, margin: "-12% 0px" }}
             transition={
               reducedMotion
                 ? { duration: 0 }
@@ -35,7 +38,7 @@ export function Achievements() {
                 className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-amber-300/30 bg-amber-300/10 text-amber-200"
                 initial={{ rotate: -180, scale: 0 }}
                 whileInView={{ rotate: 0, scale: 1 }}
-                viewport={{ once: true, margin: "-12%" }}
+                viewport={{ once: true, margin: "-12% 0px" }}
                 transition={
                   reducedMotion
                     ? { duration: 0 }
