@@ -51,6 +51,7 @@ export interface Publication {
   authors: string;
   collaboration?: string;
   tags: string[];
+  url?: string;
 }
 
 export interface Project {
@@ -209,6 +210,7 @@ export const publications: Publication[] = [
       "Wentao Lu, Alexander Senchenko, Alan Sayle, Abram Hindle, Cor-Paul Bezemer",
     collaboration: "In collaboration with EA",
     tags: ["Vision-Language Models", "Visual Bug Detection", "Gameplay Video Analysis"],
+    url: "https://dl.acm.org/doi/10.1145/3803437.3805208",
   },
   {
     id: "seip-2026-retrieval",
@@ -218,6 +220,7 @@ export const publications: Publication[] = [
     authors: "Wentao Lu, Alexander Senchenko, Abram Hindle, Cor-Paul Bezemer",
     collaboration: "In collaboration with EA",
     tags: ["QA Automation", "AI for Games", "Machine Learning Systems"],
+    url: "https://dl.acm.org/doi/10.1145/3786583.3786865",
   },
   {
     id: "msr-2024-chatgpt",
@@ -226,6 +229,7 @@ export const publications: Publication[] = [
     venue: "MSR 2024",
     authors: "Balreet Grewal, Wentao Lu, Sarah Nadi, Cor-Paul Bezemer",
     tags: ["Software Engineering Research", "Machine Learning Systems"],
+    url: "https://dl.acm.org/doi/10.1145/3643991.3645072",
   },
 ];
 

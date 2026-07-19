@@ -28,6 +28,9 @@ export function Archive() {
                   category: `Artifact · ${pub.venue}`,
                   description: `${pub.authors}.${pub.collaboration ? ` ${pub.collaboration}.` : ""}`,
                   tags: pub.tags,
+                  links: pub.url
+                    ? [{ label: "View paper", href: pub.url }]
+                    : undefined,
                 })
               }
               aria-haspopup="dialog"
